@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Notes PWA</title>
+    <title>RnB Network Notes</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -74,48 +74,29 @@
     <!-- Header -->
     <header class="bg-white shadow-sm z-10 px-4 py-4 flex justify-between items-center shrink-0">
         <div class="flex items-center gap-2">
-            <div class="bg-blue-500 text-white p-2 rounded-lg">
-                <i class="ph ph-notebook text-xl"></i>
+            <div class="bg-blue-500 text-white p-3 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-book text-xl"></i>
             </div>
-            <h1 class="text-xl font-bold tracking-tight text-gray-900 hidden sm:block">MyNotes</h1>
+            <h1 class="text-xl font-bold tracking-tight text-gray-900 hidden sm:block">RnB Network Notes</h1>
         </div>
         
         <!-- Action Buttons for Local Storage (Export/Import) -->
         <div class="flex items-center gap-2">
-            <input type="file" id="importFile" class="hidden" accept=".html" onchange="importData(event)">
+            <input type="file" id="importFile" name="rnd_input" autocomplete="off" class="hidden" accept=".html" onchange="importData(event)">
             <button onclick="document.getElementById('importFile').click()" class="flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 hover:bg-emerald-100 transition-colors">
-                <i class="ph ph-upload-simple"></i> Buka
+                <i class="fa-solid fa-upload"></i> Buka
             </button>
             <button onclick="exportData()" class="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors">
-                <i class="ph ph-download-simple"></i> Simpan
+                <i class="fa-solid fa-download"></i> Simpan
             </button>
         </div>
     </header>
-
-    <!-- Install App Banner (Muncul otomatis dari PWA beforeinstallprompt) -->
-    <div id="installBanner" class="hidden bg-blue-600 text-white px-4 py-3 justify-between items-center shadow-md shrink-0 w-full z-40 transition-all">
-        <div class="flex items-center gap-3">
-            <i class="ph ph-download-simple text-2xl"></i>
-            <div class="flex flex-col">
-                <span class="font-bold text-sm">Install Aplikasi Catatan Ini</span>
-                <span class="text-xs text-blue-100">Pasang di layar utama HP Anda</span>
-            </div>
-        </div>
-        <div class="flex gap-2 items-center">
-            <button onclick="dismissInstall()" class="p-2 text-blue-200 hover:text-white transition-colors focus:outline-none">
-                <i class="ph ph-x text-lg"></i>
-            </button>
-            <button onclick="installApp()" class="bg-white text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold shadow hover:bg-blue-50 transition-colors focus:outline-none">
-                Install
-            </button>
-        </div>
-    </div>
 
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto p-4 sm:p-6 pb-24" id="mainContainer">
         <!-- Empty State -->
         <div id="emptyState" class="hidden flex-col items-center justify-center h-full text-gray-400">
-            <i class="ph ph-note-blank text-6xl mb-4 text-gray-300"></i>
+            <i class="fa-regular fa-file-lines text-6xl mb-4 text-gray-300"></i>
             <p class="text-lg font-medium text-gray-600">Belum ada catatan</p>
             <p class="text-sm text-center max-w-xs mt-1">Tekan tombol + di bawah untuk membuat catatan pertama Anda.</p>
         </div>
@@ -128,7 +109,7 @@
 
     <!-- Floating Action Button -->
     <button id="fabAdd" onclick="openNoteModal()" class="fab fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-2xl transition-colors z-20 focus:outline-none focus:ring-4 focus:ring-blue-300">
-        <i class="ph ph-plus"></i>
+        <i class="fa-solid fa-plus"></i>
     </button>
 
     <!-- Note Editor Modal Overlay -->
@@ -139,27 +120,27 @@
             
             <!-- Modal Header -->
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-                <button onclick="closeNoteModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                    <i class="ph ph-x text-lg"></i>
+                <button onclick="closeNoteModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center w-8 h-8">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
                 <span id="modalModeTitle" class="font-medium text-gray-600 text-sm">Catatan Baru</span>
                 <button id="btnSave" onclick="saveNote()" class="px-4 py-1.5 bg-blue-50 text-blue-600 font-semibold rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1">
-                    <i class="ph ph-check-circle"></i> Simpan
+                    <i class="fa-solid fa-circle-check"></i> Simpan
                 </button>
             </div>
 
             <!-- Modal Body -->
             <div class="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto">
-                <input type="hidden" id="noteId">
-                <input type="text" id="noteTitle" placeholder="Judul Catatan..." class="w-full text-2xl font-bold text-gray-800 placeholder-gray-300 border-none outline-none focus:ring-0 mb-4 bg-transparent">
-                <textarea id="noteContent" placeholder="Mulai mengetik di sini..." class="w-full flex-1 resize-none text-gray-600 placeholder-gray-300 border-none outline-none focus:ring-0 text-base leading-relaxed bg-transparent"></textarea>
+                <input type="hidden" id="noteId" name="rnd_input" autocomplete="off">
+                <input type="text" id="noteTitle" name="rnd_input" autocomplete="off" placeholder="Judul Catatan..." class="w-full text-2xl font-bold text-gray-800 placeholder-gray-300 border-none outline-none focus:ring-0 mb-4 bg-transparent">
+                <textarea id="noteContent" name="rnd_input" autocomplete="off" placeholder="Mulai mengetik di sini..." class="w-full flex-1 resize-none text-gray-600 placeholder-gray-300 border-none outline-none focus:ring-0 text-base leading-relaxed bg-transparent"></textarea>
             </div>
 
             <!-- Modal Footer (For Actions like Delete) -->
             <div id="modalFooter" class="px-4 py-3 border-t border-gray-50 shrink-0 flex justify-between items-center bg-gray-50 rounded-b-2xl hidden">
                 <span id="noteTimestamp" class="text-xs text-gray-400"></span>
                 <button id="btnDelete" onclick="handleDeleteClick()" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium flex items-center gap-1">
-                    <i class="ph ph-trash"></i> <span id="deleteText">Hapus</span>
+                    <i class="fa-solid fa-trash"></i> <span id="deleteText">Hapus</span>
                 </button>
             </div>
         </div>
@@ -228,7 +209,7 @@
                             
                             <!-- Tombol Hapus Langsung di Card -->
                             <button onclick="handleCardDelete(event, '${note.id}')" id="delBtn_${note.id}" class="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:opacity-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1 z-10" title="Hapus catatan">
-                                <i class="ph ph-trash text-xl"></i>
+                                <i class="fa-solid fa-trash text-lg"></i>
                                 <span class="text-xs font-bold hidden del-text">Yakin?</span>
                             </button>
                         </div>
@@ -338,10 +319,10 @@
 </head>
 <body>
     <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 500px; margin: 0 auto; text-align: center;">
-        <h2 style="color: #1f2937;">Backup Catatan CloudNotes</h2>
-        <p>File ini berisi backup catatan Anda dari aplikasi MyNotes.</p>
+        <h2 style="color: #1f2937;">Backup Catatan RnB Network Notes</h2>
+        <p>File ini berisi backup catatan Anda dari aplikasi RnB Network Notes.</p>
         <p><strong>Penting:</strong> Jangan mengubah isi dari file ini agar data Anda tidak rusak.</p>
-        <p>Untuk memulihkan data: Buka aplikasi MyNotes di HP baru Anda, klik tombol <b>Buka (Import)</b>, lalu pilih file ini.</p>
+        <p>Untuk memulihkan data: Buka aplikasi RnB Network Notes di HP baru Anda, klik tombol <b>Buka (Import)</b>, lalu pilih file ini.</p>
     </div>
     <!-- DATA_PAYLOAD_START -->
     <script type="application/json" id="notesBackupData">${dataStr}<\/script>
@@ -510,88 +491,6 @@
 
         // Start App
         initApp();
-    </script>
-
-    <!-- PWA Setup & Install Prompt Logic Dinamis -->
-    <script>
-        (function initPWA() {
-            try {
-                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#3b82f6" rx="112"/><path fill="none" stroke="#fff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" d="M144 144h224v224H144z"/><path fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round" d="M192 216h128M192 296h128"/></svg>`;
-                const iconBase64 = 'data:image/svg+xml;base64,' + btoa(iconSvg);
-
-                const manifest = {
-                    name: "My Notes PWA",
-                    short_name: "MyNotes",
-                    start_url: window.location.href.split('?')[0] || ".",
-                    display: "standalone",
-                    background_color: "#f3f4f6",
-                    theme_color: "#3b82f6",
-                    icons: [
-                        { src: iconBase64, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
-                        { src: iconBase64, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
-                    ]
-                };
-
-                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-                const manifestUrl = URL.createObjectURL(manifestBlob);
-                
-                const link = document.createElement('link');
-                link.rel = 'manifest';
-                link.href = manifestUrl;
-                document.head.appendChild(link);
-
-                const swCode = `
-                    self.addEventListener('install', (e) => self.skipWaiting());
-                    self.addEventListener('activate', (e) => self.clients.claim());
-                    self.addEventListener('fetch', (e) => {
-                        e.respondWith(
-                            fetch(e.request).catch(() => new Response('Aplikasi offline, harap periksa koneksi internet.'))
-                        );
-                    });
-                `;
-                const swBlob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(swBlob);
-
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register(swUrl).then(reg => {
-                        console.log('Service Worker terdaftar.');
-                    }).catch(err => {
-                        console.warn('SW diblokir (sandbox/iframe):', err);
-                    });
-                }
-            } catch(e) {}
-        })();
-
-        // Logic UI Install Banner
-        let deferredPrompt;
-        const installBanner = document.getElementById('installBanner');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBanner.classList.remove('hidden');
-            installBanner.classList.add('flex');
-        });
-
-        window.installApp = async () => {
-            if (deferredPrompt) {
-                installBanner.classList.add('hidden');
-                installBanner.classList.remove('flex');
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                deferredPrompt = null;
-            }
-        };
-
-        window.dismissInstall = () => {
-            installBanner.classList.add('hidden');
-            installBanner.classList.remove('flex');
-        };
-
-        window.addEventListener('appinstalled', () => {
-            installBanner.classList.add('hidden');
-            installBanner.classList.remove('flex');
-        });
     </script>
 </body>
 </html>
