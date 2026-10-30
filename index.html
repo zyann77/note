@@ -38,6 +38,25 @@
             transform: scale(0.98);
         }
 
+        /* Styling for Fake Inputs (contenteditable) */
+        [contenteditable="true"] {
+            cursor: text;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        [contenteditable="true"]:focus {
+            outline: none;
+        }
+        
+        /* Bulletproof placeholder logic for contenteditable */
+        .show-placeholder:before {
+            content: attr(data-placeholder);
+            color: #d1d5db; /* tailwind gray-300 */
+            pointer-events: none;
+            display: block;
+            position: absolute;
+        }
+
         /* Modal transitions */
         .modal-enter {
             opacity: 0;
@@ -82,11 +101,10 @@
         
         <!-- Action Buttons for Local Storage (Export/Import) -->
         <div class="flex items-center gap-2">
-            <input type="file" id="importFile" name="rnd_input" autocomplete="off" class="hidden" accept=".html" onchange="importData(event)">
-            <button onclick="document.getElementById('importFile').click()" class="flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 hover:bg-emerald-100 transition-colors">
+            <button type="button" onclick="triggerImport()" class="flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 hover:bg-emerald-100 transition-colors">
                 <i class="fa-solid fa-upload"></i> Buka
             </button>
-            <button onclick="exportData()" class="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors">
+            <button type="button" onclick="exportData()" class="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors">
                 <i class="fa-solid fa-download"></i> Simpan
             </button>
         </div>
@@ -108,7 +126,7 @@
     </main>
 
     <!-- Floating Action Button -->
-    <button id="fabAdd" onclick="openNoteModal()" class="fab fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-2xl transition-colors z-20 focus:outline-none focus:ring-4 focus:ring-blue-300">
+    <button type="button" id="fabAdd" onclick="openNoteModal()" class="fab fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-2xl transition-colors z-20 focus:outline-none focus:ring-4 focus:ring-blue-300">
         <i class="fa-solid fa-plus"></i>
     </button>
 
@@ -120,28 +138,39 @@
             
             <!-- Modal Header -->
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-                <button onclick="closeNoteModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center w-8 h-8">
+                <button type="button" onclick="closeNoteModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center w-8 h-8">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
                 <span id="modalModeTitle" class="font-medium text-gray-600 text-sm">Catatan Baru</span>
-                <button id="btnSave" onclick="saveNote()" class="px-4 py-1.5 bg-blue-50 text-blue-600 font-semibold rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1">
+                <button type="button" id="btnSave" onclick="saveNote()" class="px-4 py-1.5 bg-blue-50 text-blue-600 font-semibold rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1">
                     <i class="fa-solid fa-circle-check"></i> Simpan
                 </button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto">
-                <input type="hidden" id="noteId" name="rnd_input" autocomplete="off">
-                <input type="text" id="noteTitle" name="rnd_input" autocomplete="off" placeholder="Judul Catatan..." class="w-full text-2xl font-bold text-gray-800 placeholder-gray-300 border-none outline-none focus:ring-0 mb-4 bg-transparent">
-                <textarea id="noteContent" name="rnd_input" autocomplete="off" placeholder="Mulai mengetik di sini..." class="w-full flex-1 resize-none text-gray-600 placeholder-gray-300 border-none outline-none focus:ring-0 text-base leading-relaxed bg-transparent"></textarea>
+            <!-- Modal Body (NO INPUTS/TEXTAREAS HERE) -->
+            <div class="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto relative">
+                
+                <!-- Fake Input: Title -->
+                <div contenteditable="true" 
+                     id="noteTitle" 
+                     data-placeholder="Judul Catatan..." 
+                     class="w-full text-2xl font-bold text-gray-800 border-none outline-none focus:ring-0 mb-4 bg-transparent relative empty-placeholder"
+                     oninput="handlePlaceholder(this)"></div>
+                
+                <!-- Fake Input: Content -->
+                <div contenteditable="true" 
+                     id="noteContent" 
+                     data-placeholder="Mulai mengetik di sini..." 
+                     class="w-full flex-1 text-gray-600 border-none outline-none focus:ring-0 text-base leading-relaxed bg-transparent relative empty-placeholder"
+                     oninput="handlePlaceholder(this)"></div>
+                     
             </div>
 
             <!-- Modal Footer (For Actions like Delete) -->
             <div id="modalFooter" class="px-4 py-3 border-t border-gray-50 shrink-0 flex justify-between items-center bg-gray-50 rounded-b-2xl hidden">
                 <span id="noteTimestamp" class="text-xs text-gray-400"></span>
-                <button id="btnDelete" onclick="handleDeleteClick()" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium flex items-center gap-1">
-                    <i class="fa-solid fa-trash"></i> <span id="deleteText">Hapus</span>
-                </button>
+                <!-- Kept for formatting consistency, though deleting is now on the card -->
+                <div class="text-xs text-gray-400"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>Tersimpan Lokal</div>
             </div>
         </div>
     </div>
@@ -151,22 +180,35 @@
         Notification message
     </div>
 
-    <!-- Core Logic: Local Storage & Export/Import -->
+    <!-- Core Logic: Local Storage & JSON Export/Import -->
     <script>
         const STORAGE_KEY = 'myNotesData';
         let notesData = [];
+        let currentEditId = null; // Global ID tracking (Replacing hidden input)
 
         // UI Elements
         const emptyState = document.getElementById('emptyState');
         const notesGrid = document.getElementById('notesGrid');
         const modalOverlay = document.getElementById('modalOverlay');
         const noteModal = document.getElementById('noteModal');
-        const titleInput = document.getElementById('noteTitle');
-        const contentInput = document.getElementById('noteContent');
-        const idInput = document.getElementById('noteId');
         const modalModeTitle = document.getElementById('modalModeTitle');
         const modalFooter = document.getElementById('modalFooter');
         const noteTimestamp = document.getElementById('noteTimestamp');
+        
+        // Fake Inputs
+        const titleInput = document.getElementById('noteTitle');
+        const contentInput = document.getElementById('noteContent');
+
+        // Handles placeholder visibility for contenteditable elements
+        window.handlePlaceholder = (el) => {
+            if (el.innerText.trim() === '') {
+                el.classList.add('show-placeholder');
+                // clear br tags added by browsers when empty
+                if (el.innerHTML !== '') el.innerHTML = '';
+            } else {
+                el.classList.remove('show-placeholder');
+            }
+        };
 
         // Initialize Data
         function initApp() {
@@ -207,8 +249,8 @@
                                 <span>${dateStr}</span>
                             </div>
                             
-                            <!-- Tombol Hapus Langsung di Card -->
-                            <button onclick="handleCardDelete(event, '${note.id}')" id="delBtn_${note.id}" class="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:opacity-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1 z-10" title="Hapus catatan">
+                            <!-- Tombol Hapus Langsung di Card (2-step verification) -->
+                            <button type="button" onclick="handleCardDelete(event, '${note.id}')" id="delBtn_${note.id}" class="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:opacity-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1 z-10" title="Hapus catatan">
                                 <i class="fa-solid fa-trash text-lg"></i>
                                 <span class="text-xs font-bold hidden del-text">Yakin?</span>
                             </button>
@@ -251,9 +293,9 @@
 
         // --- CRUD Operations ---
         window.saveNote = () => {
-            const title = titleInput.value.trim();
-            const content = contentInput.value.trim();
-            const id = idInput.value;
+            // Read from innerText to preserve formatting
+            const title = titleInput.innerText.trim();
+            const content = contentInput.innerText.trim();
             
             if (!title && !content) {
                 closeNoteModal();
@@ -262,9 +304,9 @@
 
             const now = Date.now();
             
-            if (id) {
+            if (currentEditId) {
                 // Update
-                const index = notesData.findIndex(n => n.id === id);
+                const index = notesData.findIndex(n => n.id === currentEditId);
                 if (index !== -1) {
                     notesData[index] = { ...notesData[index], title, content, updatedAt: now };
                     showToast("Catatan diperbarui");
@@ -287,17 +329,6 @@
             closeNoteModal();
         };
 
-        window.deleteCurrentNote = () => {
-            const id = idInput.value;
-            if (!id) return;
-
-            notesData = notesData.filter(n => n.id !== id);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(notesData));
-            showToast("Catatan dihapus");
-            renderNotes();
-            closeNoteModal();
-        };
-
         window.editNote = (id) => {
             const note = notesData.find(n => n.id === id);
             if (note) {
@@ -305,91 +336,66 @@
             }
         };
 
-        // --- Export / Import Logic (The data.html feature) ---
+        // --- Export / Import Logic (JSON Implementation) ---
         window.exportData = () => {
-            const dataStr = JSON.stringify(notesData);
-            // Create a safe HTML file that contains the JSON payload embedded in a script tag
-            const htmlContent = `<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backup Catatan (Jangan Ubah)</title>
-    <style>body { font-family: sans-serif; padding: 2rem; background: #f3f4f6; color: #374151; }</style>
-</head>
-<body>
-    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 500px; margin: 0 auto; text-align: center;">
-        <h2 style="color: #1f2937;">Backup Catatan RnB Network Notes</h2>
-        <p>File ini berisi backup catatan Anda dari aplikasi RnB Network Notes.</p>
-        <p><strong>Penting:</strong> Jangan mengubah isi dari file ini agar data Anda tidak rusak.</p>
-        <p>Untuk memulihkan data: Buka aplikasi RnB Network Notes di HP baru Anda, klik tombol <b>Buka (Import)</b>, lalu pilih file ini.</p>
-    </div>
-    <!-- DATA_PAYLOAD_START -->
-    <script type="application/json" id="notesBackupData">${dataStr}<\/script>
-    <!-- DATA_PAYLOAD_END -->
-</body>
-</html>`;
-
-            const blob = new Blob([htmlContent], { type: 'text/html' });
+            if (notesData.length === 0) {
+                showToast("Tidak ada catatan untuk disimpan.");
+                return;
+            }
+            const dataStr = JSON.stringify(notesData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `MyNotes-Backup-${new Date().toISOString().split('T')[0]}.html`;
+            a.download = `RnB-Notes-Backup-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            showToast("Berhasil menyimpan data.html");
+            showToast("Berhasil menyimpan notes.json");
         };
 
-        window.importData = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
+        window.triggerImport = () => {
+            // Dynamically construct input to keep HTML 100% free from inputs
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            
+            fileInput.onchange = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(e.target.result, 'text/html');
-                    const scriptTag = doc.getElementById('notesBackupData');
-                    
-                    if (scriptTag) {
-                        const importedData = JSON.parse(scriptTag.textContent);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
                         if (Array.isArray(importedData)) {
-                            // Merge or Replace data
                             notesData = importedData;
                             localStorage.setItem(STORAGE_KEY, JSON.stringify(notesData));
                             renderNotes();
                             showToast("Berhasil memulihkan catatan!");
                         } else {
-                            showToast("Format data tidak sesuai.");
+                            showToast("Format file JSON tidak valid.");
                         }
-                    } else {
-                        showToast("File HTML tidak mengandung backup data.");
+                    } catch (error) {
+                        console.error("Import error:", error);
+                        showToast("Gagal memproses file.");
                     }
-                } catch (error) {
-                    console.error("Import error:", error);
-                    showToast("Gagal memproses file.");
-                }
-                // Reset input file
-                event.target.value = '';
+                };
+                reader.readAsText(file);
             };
-            reader.readAsText(file);
+            
+            // Programmatically open file dialog
+            fileInput.click();
         };
 
         // --- UI Interactions ---
-        let deleteConfirmStep = 0;
-        let deleteTimeout;
-
         function openNoteModal(note = null) {
-            deleteConfirmStep = 0;
-            resetDeleteButton();
-
             if (note) {
-                idInput.value = note.id;
-                titleInput.value = note.title || '';
-                contentInput.value = note.content || '';
+                currentEditId = note.id;
+                titleInput.innerText = note.title || '';
+                contentInput.innerText = note.content || '';
                 modalModeTitle.textContent = "Edit Catatan";
                 modalFooter.classList.remove('hidden');
                 
@@ -398,12 +404,16 @@
                     noteTimestamp.textContent = "Diubah: " + date.toLocaleDateString('id-ID') + " " + date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
                 }
             } else {
-                idInput.value = '';
-                titleInput.value = '';
-                contentInput.value = '';
+                currentEditId = null;
+                titleInput.innerText = '';
+                contentInput.innerText = '';
                 modalModeTitle.textContent = "Catatan Baru";
                 modalFooter.classList.add('hidden');
             }
+            
+            // Check placeholders
+            handlePlaceholder(titleInput);
+            handlePlaceholder(contentInput);
 
             modalOverlay.classList.remove('hidden');
             void modalOverlay.offsetWidth; // Reflow
@@ -416,9 +426,6 @@
             setTimeout(() => {
                 if(note && note.title) contentInput.focus();
                 else titleInput.focus();
-                // Resize textarea
-                contentInput.style.height = 0;
-                contentInput.style.height = contentInput.scrollHeight + "px";
             }, 300);
             
             document.body.style.overflow = 'hidden';
@@ -434,31 +441,6 @@
                 modalOverlay.classList.add('hidden');
                 document.body.style.overflow = '';
             }, 300);
-        }
-
-        // Two-step Delete 
-        window.handleDeleteClick = () => {
-            const btnText = document.getElementById('deleteText');
-            const btn = document.getElementById('btnDelete');
-
-            if (deleteConfirmStep === 0) {
-                deleteConfirmStep = 1;
-                btnText.textContent = "Yakin Hapus?";
-                btn.classList.add('bg-red-100', 'text-red-700');
-                
-                clearTimeout(deleteTimeout);
-                deleteTimeout = setTimeout(resetDeleteButton, 3000);
-            } else {
-                window.deleteCurrentNote();
-            }
-        };
-
-        function resetDeleteButton() {
-            deleteConfirmStep = 0;
-            const btnText = document.getElementById('deleteText');
-            const btn = document.getElementById('btnDelete');
-            if(btnText) btnText.textContent = "Hapus";
-            if(btn) btn.classList.remove('bg-red-100', 'text-red-700');
         }
 
         function showToast(message) {
@@ -481,13 +463,6 @@
                  .replace(/"/g, "&quot;")
                  .replace(/'/g, "&#039;");
         }
-
-        // Auto-resize textarea
-        const tx = document.getElementById('noteContent');
-        tx.addEventListener("input", function() {
-            this.style.height = 0;
-            this.style.height = (this.scrollHeight) + "px";
-        }, false);
 
         // Start App
         initApp();
