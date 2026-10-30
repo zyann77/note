@@ -219,19 +219,54 @@
                     const dateStr = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
                     
                     html += `
-                        <div onclick="editNote('${note.id}')" class="note-card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 group flex flex-col h-full min-h-[140px]">
-                            <h3 class="font-bold text-gray-800 text-lg mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">${title}</h3>
+                        <div onclick="editNote('${note.id}')" class="note-card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 group flex flex-col h-full min-h-[140px] relative">
+                            <h3 class="font-bold text-gray-800 text-lg mb-2 pr-10 line-clamp-1 group-hover:text-blue-600 transition-colors">${title}</h3>
                             <p class="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4 flex-1 whitespace-pre-wrap">${contentSnippet}</p>
                             <div class="mt-auto pt-3 border-t border-gray-50 flex justify-between items-center text-xs text-gray-400">
                                 <span>${dateStr}</span>
-                                <i class="ph ph-pencil-simple opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </div>
+                            
+                            <!-- Tombol Hapus Langsung di Card -->
+                            <button onclick="handleCardDelete(event, '${note.id}')" id="delBtn_${note.id}" class="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:opacity-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1 z-10" title="Hapus catatan">
+                                <i class="ph ph-trash text-xl"></i>
+                                <span class="text-xs font-bold hidden del-text">Yakin?</span>
+                            </button>
                         </div>
                     `;
                 });
                 notesGrid.innerHTML = html;
             }
         }
+
+        window.handleCardDelete = (event, id) => {
+            event.stopPropagation(); // Mencegah modal edit terbuka saat klik tombol hapus
+            const btn = document.getElementById(`delBtn_${id}`);
+            const textSpan = btn.querySelector('.del-text');
+
+            if (!btn.dataset.confirm) {
+                // Klik pertama: Minta konfirmasi (Ubah ke warna merah)
+                btn.dataset.confirm = 'true';
+                btn.classList.remove('text-gray-400', 'sm:opacity-0');
+                btn.classList.add('text-red-600', 'bg-red-100', 'opacity-100');
+                textSpan.classList.remove('hidden');
+
+                // Batal otomatis setelah 3 detik jika tidak diklik lagi
+                setTimeout(() => {
+                    if (document.getElementById(`delBtn_${id}`) && btn.dataset.confirm) {
+                        btn.dataset.confirm = '';
+                        btn.classList.remove('text-red-600', 'bg-red-100', 'opacity-100');
+                        btn.classList.add('text-gray-400', 'sm:opacity-0');
+                        textSpan.classList.add('hidden');
+                    }
+                }, 3000);
+            } else {
+                // Klik kedua: Hapus permanen dari penyimpanan
+                notesData = notesData.filter(n => n.id !== id);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(notesData));
+                showToast("Catatan berhasil dihapus");
+                renderNotes();
+            }
+        };
 
         // --- CRUD Operations ---
         window.saveNote = () => {
