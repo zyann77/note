@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notes PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .note-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .note-card:active {
+            transform: scale(0.98);
+        }
+
+        /* Modal transitions */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            transition: opacity 300ms, transform 300ms;
+        }
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+            transition: opacity 200ms, transform 200ms;
+        }
+
+        /* Floating action button pulse */
+        @keyframes subtlePulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .fab:hover {
+            animation: subtlePulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-10 px-4 py-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="bg-blue-500 text-white p-2 rounded-lg">
+                <i class="ph ph-notebook text-xl"></i>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight text-gray-900 hidden sm:block">MyNotes</h1>
+        </div>
+        
+        <!-- Action Buttons for Local Storage (Export/Import) -->
+        <div class="flex items-center gap-2">
+            <input type="file" id="importFile" class="hidden" accept=".html" onchange="importData(event)">
+            <button onclick="document.getElementById('importFile').click()" class="flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 hover:bg-emerald-100 transition-colors">
+                <i class="ph ph-upload-simple"></i> Buka
+            </button>
+            <button onclick="exportData()" class="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors">
+                <i class="ph ph-download-simple"></i> Simpan
+            </button>
+        </div>
+    </header>
+
+    <!-- Install App Banner (Muncul otomatis dari PWA beforeinstallprompt) -->
+    <div id="installBanner" class="hidden bg-blue-600 text-white px-4 py-3 justify-between items-center shadow-md shrink-0 w-full z-40 transition-all">
+        <div class="flex items-center gap-3">
+            <i class="ph ph-download-simple text-2xl"></i>
+            <div class="flex flex-col">
+                <span class="font-bold text-sm">Install Aplikasi Catatan Ini</span>
+                <span class="text-xs text-blue-100">Pasang di layar utama HP Anda</span>
+            </div>
+        </div>
+        <div class="flex gap-2 items-center">
+            <button onclick="dismissInstall()" class="p-2 text-blue-200 hover:text-white transition-colors focus:outline-none">
+                <i class="ph ph-x text-lg"></i>
+            </button>
+            <button onclick="installApp()" class="bg-white text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold shadow hover:bg-blue-50 transition-colors focus:outline-none">
+                Install
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 pb-24" id="mainContainer">
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center h-full text-gray-400">
+            <i class="ph ph-note-blank text-6xl mb-4 text-gray-300"></i>
+            <p class="text-lg font-medium text-gray-600">Belum ada catatan</p>
+            <p class="text-sm text-center max-w-xs mt-1">Tekan tombol + di bawah untuk membuat catatan pertama Anda.</p>
+        </div>
+
+        <!-- Notes Grid -->
+        <div id="notesGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
+            <!-- Notes will be injected here -->
+        </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button id="fabAdd" onclick="openNoteModal()" class="fab fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-2xl transition-colors z-20 focus:outline-none focus:ring-4 focus:ring-blue-300">
+        <i class="ph ph-plus"></i>
+    </button>
+
+    <!-- Note Editor Modal Overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300 flex items-end sm:items-center justify-center">
+        
+        <!-- Modal Content -->
+        <div id="noteModal" class="bg-white w-full sm:w-[500px] h-[85vh] sm:h-[600px] max-h-[100vh] sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col transform translate-y-full transition-transform duration-300">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+                <button onclick="closeNoteModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+                <span id="modalModeTitle" class="font-medium text-gray-600 text-sm">Catatan Baru</span>
+                <button id="btnSave" onclick="saveNote()" class="px-4 py-1.5 bg-blue-50 text-blue-600 font-semibold rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1">
+                    <i class="ph ph-check-circle"></i> Simpan
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto">
+                <input type="hidden" id="noteId">
+                <input type="text" id="noteTitle" placeholder="Judul Catatan..." class="w-full text-2xl font-bold text-gray-800 placeholder-gray-300 border-none outline-none focus:ring-0 mb-4 bg-transparent">
+                <textarea id="noteContent" placeholder="Mulai mengetik di sini..." class="w-full flex-1 resize-none text-gray-600 placeholder-gray-300 border-none outline-none focus:ring-0 text-base leading-relaxed bg-transparent"></textarea>
+            </div>
+
+            <!-- Modal Footer (For Actions like Delete) -->
+            <div id="modalFooter" class="px-4 py-3 border-t border-gray-50 shrink-0 flex justify-between items-center bg-gray-50 rounded-b-2xl hidden">
+                <span id="noteTimestamp" class="text-xs text-gray-400"></span>
+                <button id="btnDelete" onclick="handleDeleteClick()" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium flex items-center gap-1">
+                    <i class="ph ph-trash"></i> <span id="deleteText">Hapus</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full shadow-lg text-sm transition-all duration-300 opacity-0 pointer-events-none z-50 translate-y-[-20px]">
+        Notification message
+    </div>
+
+    <!-- Core Logic: Local Storage & Export/Import -->
+    <script>
+        const STORAGE_KEY = 'myNotesData';
+        let notesData = [];
+
+        // UI Elements
+        const emptyState = document.getElementById('emptyState');
+        const notesGrid = document.getElementById('notesGrid');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const noteModal = document.getElementById('noteModal');
+        const titleInput = document.getElementById('noteTitle');
+        const contentInput = document.getElementById('noteContent');
+        const idInput = document.getElementById('noteId');
+        const modalModeTitle = document.getElementById('modalModeTitle');
+        const modalFooter = document.getElementById('modalFooter');
+        const noteTimestamp = document.getElementById('noteTimestamp');
+
+        // Initialize Data
+        function initApp() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    notesData = JSON.parse(stored);
+                } catch (e) {
+                    notesData = [];
+                }
+            }
+            renderNotes();
+        }
+
+        function renderNotes() {
+            // Sort newest first
+            notesData.sort((a, b) => b.updatedAt - a.updatedAt);
+            
+            if (notesData.length === 0) {
+                emptyState.classList.remove('hidden');
+                notesGrid.classList.add('hidden');
+                notesGrid.innerHTML = '';
+            } else {
+                emptyState.classList.add('hidden');
+                notesGrid.classList.remove('hidden');
+                
+                let html = '';
+                notesData.forEach(note => {
+                    const title = note.title ? escapeHtml(note.title) : 'Tanpa Judul';
+                    const contentSnippet = note.content ? escapeHtml(note.content) : 'Tidak ada konten...';
+                    const dateStr = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    
+                    html += `
+                        <div onclick="editNote('${note.id}')" class="note-card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 group flex flex-col h-full min-h-[140px]">
+                            <h3 class="font-bold text-gray-800 text-lg mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">${title}</h3>
+                            <p class="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4 flex-1 whitespace-pre-wrap">${contentSnippet}</p>
+                            <div class="mt-auto pt-3 border-t border-gray-50 flex justify-between items-center text-xs text-gray-400">
+                                <span>${dateStr}</span>
+                                <i class="ph ph-pencil-simple opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </div>
+                        </div>
+                    `;
+                });
+                notesGrid.innerHTML = html;
+            }
+        }
+
+        // --- CRUD Operations ---
+        window.saveNote = () => {
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+            const id = idInput.value;
+            
+            if (!title && !content) {
+                closeNoteModal();
+                return;
+            }
+
+            const now = Date.now();
+            
+            if (id) {
+                // Update
+                const index = notesData.findIndex(n => n.id === id);
+                if (index !== -1) {
+                    notesData[index] = { ...notesData[index], title, content, updatedAt: now };
+                    showToast("Catatan diperbarui");
+                }
+            } else {
+                // Create
+                const newNote = {
+                    id: 'note_' + now + '_' + Math.random().toString(36).substr(2, 5),
+                    title,
+                    content,
+                    createdAt: now,
+                    updatedAt: now
+                };
+                notesData.push(newNote);
+                showToast("Catatan disimpan");
+            }
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(notesData));
+            renderNotes();
+            closeNoteModal();
+        };
+
+        window.deleteCurrentNote = () => {
+            const id = idInput.value;
+            if (!id) return;
+
+            notesData = notesData.filter(n => n.id !== id);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(notesData));
+            showToast("Catatan dihapus");
+            renderNotes();
+            closeNoteModal();
+        };
+
+        window.editNote = (id) => {
+            const note = notesData.find(n => n.id === id);
+            if (note) {
+                openNoteModal(note);
+            }
+        };
+
+        // --- Export / Import Logic (The data.html feature) ---
+        window.exportData = () => {
+            const dataStr = JSON.stringify(notesData);
+            // Create a safe HTML file that contains the JSON payload embedded in a script tag
+            const htmlContent = `<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup Catatan (Jangan Ubah)</title>
+    <style>body { font-family: sans-serif; padding: 2rem; background: #f3f4f6; color: #374151; }</style>
+</head>
+<body>
+    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 500px; margin: 0 auto; text-align: center;">
+        <h2 style="color: #1f2937;">Backup Catatan CloudNotes</h2>
+        <p>File ini berisi backup catatan Anda dari aplikasi MyNotes.</p>
+        <p><strong>Penting:</strong> Jangan mengubah isi dari file ini agar data Anda tidak rusak.</p>
+        <p>Untuk memulihkan data: Buka aplikasi MyNotes di HP baru Anda, klik tombol <b>Buka (Import)</b>, lalu pilih file ini.</p>
+    </div>
+    <!-- DATA_PAYLOAD_START -->
+    <script type="application/json" id="notesBackupData">${dataStr}<\/script>
+    <!-- DATA_PAYLOAD_END -->
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `MyNotes-Backup-${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast("Berhasil menyimpan data.html");
+        };
+
+        window.importData = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(e.target.result, 'text/html');
+                    const scriptTag = doc.getElementById('notesBackupData');
+                    
+                    if (scriptTag) {
+                        const importedData = JSON.parse(scriptTag.textContent);
+                        if (Array.isArray(importedData)) {
+                            // Merge or Replace data
+                            notesData = importedData;
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(notesData));
+                            renderNotes();
+                            showToast("Berhasil memulihkan catatan!");
+                        } else {
+                            showToast("Format data tidak sesuai.");
+                        }
+                    } else {
+                        showToast("File HTML tidak mengandung backup data.");
+                    }
+                } catch (error) {
+                    console.error("Import error:", error);
+                    showToast("Gagal memproses file.");
+                }
+                // Reset input file
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        };
+
+        // --- UI Interactions ---
+        let deleteConfirmStep = 0;
+        let deleteTimeout;
+
+        function openNoteModal(note = null) {
+            deleteConfirmStep = 0;
+            resetDeleteButton();
+
+            if (note) {
+                idInput.value = note.id;
+                titleInput.value = note.title || '';
+                contentInput.value = note.content || '';
+                modalModeTitle.textContent = "Edit Catatan";
+                modalFooter.classList.remove('hidden');
+                
+                if(note.updatedAt) {
+                    const date = new Date(note.updatedAt);
+                    noteTimestamp.textContent = "Diubah: " + date.toLocaleDateString('id-ID') + " " + date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+                }
+            } else {
+                idInput.value = '';
+                titleInput.value = '';
+                contentInput.value = '';
+                modalModeTitle.textContent = "Catatan Baru";
+                modalFooter.classList.add('hidden');
+            }
+
+            modalOverlay.classList.remove('hidden');
+            void modalOverlay.offsetWidth; // Reflow
+            modalOverlay.classList.remove('opacity-0');
+            modalOverlay.classList.add('opacity-100');
+            
+            noteModal.classList.remove('translate-y-full');
+            noteModal.classList.add('translate-y-0');
+
+            setTimeout(() => {
+                if(note && note.title) contentInput.focus();
+                else titleInput.focus();
+                // Resize textarea
+                contentInput.style.height = 0;
+                contentInput.style.height = contentInput.scrollHeight + "px";
+            }, 300);
+            
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeNoteModal() {
+            modalOverlay.classList.remove('opacity-100');
+            modalOverlay.classList.add('opacity-0');
+            noteModal.classList.remove('translate-y-0');
+            noteModal.classList.add('translate-y-full');
+
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        // Two-step Delete 
+        window.handleDeleteClick = () => {
+            const btnText = document.getElementById('deleteText');
+            const btn = document.getElementById('btnDelete');
+
+            if (deleteConfirmStep === 0) {
+                deleteConfirmStep = 1;
+                btnText.textContent = "Yakin Hapus?";
+                btn.classList.add('bg-red-100', 'text-red-700');
+                
+                clearTimeout(deleteTimeout);
+                deleteTimeout = setTimeout(resetDeleteButton, 3000);
+            } else {
+                window.deleteCurrentNote();
+            }
+        };
+
+        function resetDeleteButton() {
+            deleteConfirmStep = 0;
+            const btnText = document.getElementById('deleteText');
+            const btn = document.getElementById('btnDelete');
+            if(btnText) btnText.textContent = "Hapus";
+            if(btn) btn.classList.remove('bg-red-100', 'text-red-700');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-[-20px]');
+            }, 3000);
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // Auto-resize textarea
+        const tx = document.getElementById('noteContent');
+        tx.addEventListener("input", function() {
+            this.style.height = 0;
+            this.style.height = (this.scrollHeight) + "px";
+        }, false);
+
+        // Start App
+        initApp();
+    </script>
+
+    <!-- PWA Setup & Install Prompt Logic Dinamis -->
+    <script>
+        (function initPWA() {
+            try {
+                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#3b82f6" rx="112"/><path fill="none" stroke="#fff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" d="M144 144h224v224H144z"/><path fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round" d="M192 216h128M192 296h128"/></svg>`;
+                const iconBase64 = 'data:image/svg+xml;base64,' + btoa(iconSvg);
+
+                const manifest = {
+                    name: "My Notes PWA",
+                    short_name: "MyNotes",
+                    start_url: window.location.href.split('?')[0] || ".",
+                    display: "standalone",
+                    background_color: "#f3f4f6",
+                    theme_color: "#3b82f6",
+                    icons: [
+                        { src: iconBase64, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+                        { src: iconBase64, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestUrl = URL.createObjectURL(manifestBlob);
+                
+                const link = document.createElement('link');
+                link.rel = 'manifest';
+                link.href = manifestUrl;
+                document.head.appendChild(link);
+
+                const swCode = `
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('activate', (e) => self.clients.claim());
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(
+                            fetch(e.request).catch(() => new Response('Aplikasi offline, harap periksa koneksi internet.'))
+                        );
+                    });
+                `;
+                const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(swBlob);
+
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register(swUrl).then(reg => {
+                        console.log('Service Worker terdaftar.');
+                    }).catch(err => {
+                        console.warn('SW diblokir (sandbox/iframe):', err);
+                    });
+                }
+            } catch(e) {}
+        })();
+
+        // Logic UI Install Banner
+        let deferredPrompt;
+        const installBanner = document.getElementById('installBanner');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBanner.classList.remove('hidden');
+            installBanner.classList.add('flex');
+        });
+
+        window.installApp = async () => {
+            if (deferredPrompt) {
+                installBanner.classList.add('hidden');
+                installBanner.classList.remove('flex');
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            }
+        };
+
+        window.dismissInstall = () => {
+            installBanner.classList.add('hidden');
+            installBanner.classList.remove('flex');
+        };
+
+        window.addEventListener('appinstalled', () => {
+            installBanner.classList.add('hidden');
+            installBanner.classList.remove('flex');
+        });
+    </script>
+</body>
+</html>
